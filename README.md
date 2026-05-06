@@ -11,7 +11,7 @@ Este repositório contém a infraestrutura necessária para realizar o deploy em
 
 1. Faça o clone deste repositório na sua VPS ou máquina de produção:
    ```bash
-   git clone <url-deste-repositorio>
+   git clone https://github.com/caiofbiotavs/contab-planner.git
    cd contab-planner-deploy
    ```
 
