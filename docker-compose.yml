@@ -1,0 +1,72 @@
+# ========================================
+# Contab Planner — Production Deployment
+# ========================================
+# Este docker-compose.yml utiliza as imagens pré-compiladas
+# do sistema para execução em ambiente de produção.
+
+services:
+  # --- Frontend (Next.js) ---
+  frontend:
+    image: ghcr.io/caiotavares/contab-planner-frontend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # --- Backend (FastAPI) ---
+  backend:
+    image: ghcr.io/caiotavares/contab-planner-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Redis (Broker/Cache) ---
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # --- Celery Worker ---
+  celery-worker:
+    image: ghcr.io/caiotavares/contab-planner-backend:latest
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    command: celery -A workers.celery_app worker --loglevel=info
+    depends_on:
+      - redis
+      - backend
+    restart: unless-stopped
+
+  # --- Celery Beat ---
+  celery-beat:
+    image: ghcr.io/caiotavares/contab-planner-backend:latest
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    command: celery -A workers.celery_app beat --loglevel=info
+    depends_on:
+      - redis
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis_data:
